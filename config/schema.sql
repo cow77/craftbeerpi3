@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS step
     id INTEGER PRIMARY KEY NOT NULL,
     "order" INTEGER,
     name VARCHAR(80),
-1    type VARCHAR(100),
+    type VARCHAR(100),
     stepstate VARCHAR(255),
     state VARCHAR(1),
     start INTEGER,
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS step
 );
 
 CREATE TABLE IF NOT EXISTS sensor
-2(
+(
     id INTEGER PRIMARY KEY NOT NULL,
     type VARCHAR(100),
     name VARCHAR(80),
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS sensor
 
 CREATE TABLE IF NOT EXISTS fermenter_step
 (
-,    id INTEGER PRIMARY KEY NOT NULL,
+    id INTEGER PRIMARY KEY NOT NULL,
     name VARCHAR(80),
     hours INTEGER,
     minutes INTEGER,
