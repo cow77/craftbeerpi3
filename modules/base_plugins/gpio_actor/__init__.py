@@ -18,7 +18,7 @@ except Exception as e:
 @cbpi.actor
 class GPIOSimple(ActorBase):
 
-    gpio = Property.Select("GPIO", options=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27])
+    gpio = Property.Select("GPIO", options=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27], description="GPIO to which the actor is connected")
 
     def init(self):
         GPIO.setup(int(self.gpio), GPIO.OUT)
@@ -35,11 +35,11 @@ class GPIOSimple(ActorBase):
 @cbpi.actor
 class GPIOPWM(ActorBase):
 
-    gpio = Property.Select("GPIO", options=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27])
-    duty_cylce = Property.Number("Duty Cycle", configurable=True)
+    gpio = Property.Select("GPIO", options=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27], description="GPIO to which the actor is connected")
+    frequency = Property.Number("Frequency (Hz)", configurable=True)
 
     p = None
-    power = 100
+    power = 100  # duty cycle
 
     def init(self):
         GPIO.setup(int(self.gpio), GPIO.OUT)
@@ -50,10 +50,10 @@ class GPIOPWM(ActorBase):
         if power is not None:
             self.power = int(power)
 
-        if self.duty_cylce is None:
-            duty_cylce = 50
+        if self.frequency is None:
+            self.frequency = 0.5  # 2 sec
 
-        self.p = GPIO.PWM(int(self.gpio), int(self.duty_cylce))
+        self.p = GPIO.PWM(int(self.gpio), float(self.frequency))
         self.p.start(int(self.power))
 
     def set_power(self, power):
@@ -74,7 +74,7 @@ class GPIOPWM(ActorBase):
 @cbpi.actor
 class RelayBoard(ActorBase):
 
-    gpio = Property.Select("GPIO", options=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27])
+    gpio = Property.Select("GPIO", options=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27], description="GPIO to which the actor is connected")
 
     def init(self):
         GPIO.setup(int(self.gpio), GPIO.OUT)
@@ -91,6 +91,7 @@ class RelayBoard(ActorBase):
 @cbpi.actor
 class Dummy(ActorBase):
 
+
     def on(self, power=100):
         '''
         Code to switch on the actor
@@ -101,4 +102,6 @@ class Dummy(ActorBase):
 
     def off(self):
         print "OFF"
+
+
 

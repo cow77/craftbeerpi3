@@ -40,7 +40,6 @@ class ActorAPI(object):
             value = self.cache.get("actors").get(int(id))
             cfg = value.config.copy()
             cfg.update(dict(api=self, id=id, name=value.name))
-            cfg.update(dict(api=self, id=id, name=value.name))
             clazz = self.cache.get("actor_types").get(value.type).get("class")
             value.instance = clazz(**cfg)
             value.instance.init()
@@ -159,9 +158,8 @@ class SensorAPI(object):
     def log_action(self, text):
         filename = "./logs/action.log"
         formatted_time = strftime("%Y-%m-%d %H:%M:%S", localtime())
-
-
         with open(filename, "a") as file:
+            text = text.encode("utf-8")
             file.write("%s,%s\n" % (formatted_time, text))
 
     def shutdown_sensor(self, id):
@@ -243,6 +241,15 @@ class CraftBeerPi(ActorAPI, SensorAPI):
         else:
             return cfg.value
 
+    def set_config_parameter(self, name, value):
+        from modules.config import Config
+        with self.app.app_context():
+            update_data = {"name": name, "value": value}
+            self.cache.get("config")[name].__dict__.update(**update_data)
+            c = Config.update(**update_data)
+            self.emit("UPDATE_CONFIG", c)
+
+
     def add_config_parameter(self, name, value, type, description, options=None):
         from modules.config import Config
         with self.app.app_context():
@@ -259,32 +266,51 @@ class CraftBeerPi(ActorAPI, SensorAPI):
     # helper method for parsing props
     def __parseProps(self, key, cls):
         name = cls.__name__
-        self.cache[key][name] = {"name": name, "class": cls, "properties": []}
+        self.cache[key][name] = {"name": name, "class": cls, "properties": [], "actions": []}
         tmpObj = cls()
         members = [attr for attr in dir(tmpObj) if not callable(getattr(tmpObj, attr)) and not attr.startswith("__")]
         for m in members:
             if isinstance(tmpObj.__getattribute__(m), Property.Number):
                 t = tmpObj.__getattribute__(m)
                 self.cache[key][name]["properties"].append(
-                    {"name": m, "label": t.label, "type": "number", "configurable": t.configurable})
+                    {"name": m, "label": t.label, "type": "number", "configurable": t.configurable, "description": t.description, "default_value": t.default_value})
             elif isinstance(tmpObj.__getattribute__(m), Property.Text):
                 t = tmpObj.__getattribute__(m)
                 self.cache[key][name]["properties"].append(
-                    {"name": m, "label": t.label, "type": "text", "configurable": t.configurable})
+                    {"name": m, "label": t.label, "type": "text", "configurable": t.configurable, "default_value": t.default_value, "description": t.description})
             elif isinstance(tmpObj.__getattribute__(m), Property.Select):
                 t = tmpObj.__getattribute__(m)
                 self.cache[key][name]["properties"].append(
-                    {"name": m, "label": t.label, "type": "select",  "configurable": True, "options": t.options})
+                    {"name": m, "label": t.label, "type": "select",  "configurable": True, "options": t.options, "description": t.description})
+            elif isinstance(tmpObj.__getattribute__(m), Property.Actor):
+                t = tmpObj.__getattribute__(m)
+                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "actor",  "configurable": t.configurable, "description": t.description})
+            elif isinstance(tmpObj.__getattribute__(m), Property.Sensor):
+                t = tmpObj.__getattribute__(m)
+                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "sensor", "configurable": t.configurable, "description": t.description})
+            elif isinstance(tmpObj.__getattribute__(m), Property.Kettle):
+                t = tmpObj.__getattribute__(m)
+                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "kettle", "configurable": t.configurable, "description": t.description})
+
+        for name, method in cls.__dict__.iteritems():
+            if hasattr(method, "action"):
+                label = method.__getattribute__("label")
+                self.cache[key][cls.__name__]["actions"].append({"method": name, "label": label})
+
+
         return cls
 
 
     def actor(self, cls):
         return self.__parseProps("actor_types", cls)
 
+
+
     def actor2(self, description="", power=True, **options):
 
         def decorator(f):
             print f()
+            print f
             print options
             print description
             return f
@@ -304,6 +330,8 @@ class CraftBeerPi(ActorAPI, SensorAPI):
 
     def get_fermentation_controller(self, name):
         return self.cache["fermentation_controller_types"].get(name)
+
+
     # Step action
     def action(self,label):
         def real_decorator(func):
@@ -324,25 +352,22 @@ class CraftBeerPi(ActorAPI, SensorAPI):
         for m in members:
             if isinstance(tmpObj.__getattribute__(m), StepProperty.Number):
                 t = tmpObj.__getattribute__(m)
-                #self.cache[key][name]["properties"].append(t.__dict__)
-                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "number", "configurable": t.configurable, "default_value": t.default_value})
+                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "number", "configurable": t.configurable, "default_value": t.default_value, "description": t.description})
             elif isinstance(tmpObj.__getattribute__(m), StepProperty.Text):
                 t = tmpObj.__getattribute__(m)
-                print t.__dict__
-                #self.cache[key][name]["properties"].append(t.__dict__)
-                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "text", "configurable": t.configurable})
+                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "text", "configurable": t.configurable, "default_value": t.default_value, "description": t.description})
             elif isinstance(tmpObj.__getattribute__(m), StepProperty.Select):
                 t = tmpObj.__getattribute__(m)
-                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "select", "options": t.options})
+                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "select", "configurable": True, "options": t.options, "description": t.description})
             elif isinstance(tmpObj.__getattribute__(m), StepProperty.Actor):
                 t = tmpObj.__getattribute__(m)
-                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "actor",  "configurable": t.configurable})
+                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "actor",  "configurable": t.configurable, "description": t.description})
             elif isinstance(tmpObj.__getattribute__(m), StepProperty.Sensor):
                 t = tmpObj.__getattribute__(m)
-                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "sensor", "configurable": t.configurable})
+                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "sensor", "configurable": t.configurable, "description": t.description})
             elif isinstance(tmpObj.__getattribute__(m), StepProperty.Kettle):
                 t = tmpObj.__getattribute__(m)
-                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "kettle", "configurable": t.configurable})
+                self.cache[key][name]["properties"].append({"name": m, "label": t.label, "type": "kettle", "configurable": t.configurable, "description": t.description})
 
         for name, method in cls.__dict__.iteritems():
             if hasattr(method, "action"):
@@ -458,7 +483,7 @@ class CraftBeerPi(ActorAPI, SensorAPI):
         def job(interval, method):
             while True:
                 try:
-                    method()
+                    method(self)
                 except Exception as e:
                     self.app.logger.error("Exception" + method.__name__ + ": " + str(e))
                 self.socketio.sleep(interval)

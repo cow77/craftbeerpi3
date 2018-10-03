@@ -18,6 +18,7 @@ def getSensors():
         arr = []
         for dirname in os.listdir('/sys/bus/w1/devices'):
             if (dirname.startswith("28") or dirname.startswith("10")):
+                cbpi.app.logger.info("Device %s Found (Family: 28/10, Thermometer on GPIO4 (w1))" % dirname)
                 arr.append(dirname)
         return arr
     except:
@@ -66,8 +67,8 @@ class myThread (threading.Thread):
 @cbpi.sensor
 class ONE_WIRE_SENSOR(SensorPassive):
 
-    sensor_name = Property.Select("Sensor", getSensors())
-    offset = Property.Number("Offset", True, 0)
+    sensor_name = Property.Select("Sensor", getSensors(), description="The OneWire sensor address.")
+    offset = Property.Number("Offset", True, 0, description="Offset which is added to the received sensor data. Positive and negative values are both allowed.")
 
     def init(self):
 
@@ -113,5 +114,5 @@ def set_temp(t):
 
 @cbpi.initalizer()
 def init(cbpi):
-    cbpi.app.logger.info("INITIALIZE ONE WIRE MODULE")
+
     cbpi.app.register_blueprint(blueprint, url_prefix='/api/one_wire')
